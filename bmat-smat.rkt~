@@ -1,0 +1,117 @@
+#lang racket
+(require redex)
+(require redex/reduction-semantics)
+(require "junct-bmat.rkt")
+(require (planet wmfarr/plt-linalg:1:13/matrix))
+(provide (all-defined-out))
+
+
+
+(define (str#s bvec)
+  (foldr (λ (x y z) (if (string? x) (cons y z) z))
+         null
+         bvec
+         (build-list (length bvec) (λ (x) x))
+         ))
+
+;(str#s '("q" 0 0 -7 "p"))
+;(str#s  '(-1 "q_2" 0 -7 0))
+
+(define (not0##s bvec)
+  (foldr (λ (x y z) (if (not (or (string? x) (zero? x))) (cons (cons y x) z) z))
+         null
+         bvec
+         (build-list (length bvec) (λ (x) x))
+         ))
+;(not0##s '("q" 0 0 -7 "p"))
+;(not0##s  '(-1 "q_2" 0 -7 0))
+
+(define (get-A bmat Arows smat sindex)
+  (begin
+    (map (λ (x y) (map (λ (z w) (matrix-set! smat y w (matrix-ref bmat x z)))
+                       Arows
+                       (build-list (length Arows) (λ (x)x))))
+         
+         Arows
+         sindex
+         )
+    smat))
+;(mat->list (get-A (matrix 4 4
+ ;                          1  2  3  4
+  ;                         5  6  7  8
+   ;                        9 10 11 12
+    ;                      13 14 15 16) '(0 2) (matrix 2 2 0 0 0 0) '(0 1)))
+
+(define (get-B bmat Arows Brows/sclr smat sindex)
+  (begin
+    (map (λ (x) (map (λ (y z) (matrix-set! smat z 0 (+ (* (cdr x) (matrix-ref bmat y (car x))) (matrix-ref smat z 0))))
+                     Arows
+                     sindex))
+         Brows/sclr
+         )
+    smat))
+;(mat->list (get-B (matrix 4 4
+ ;                          1  2  3  4
+  ;                         5  6  7  8
+   ;                        9 10 11 12
+    ;                      13 14 15 16) '(0 2) '((1 . 2)) (matrix 2 1 0 0)'(0 1)))
+
+(define (get-svec bvec Arows)
+  (map (λ (x) (list-ref bvec x))
+       Arows
+       ))
+;(get-svec '("q" 0 0 -7 "p") '(0 4))
+
+(define (bmat/bvec->ax+b bmat bvec)
+  (let*((Arows (str#s bvec))
+        (Brows/sclr (not0##s bvec))
+        (l (length Arows))
+        (sindex (build-list (length Arows) (λ (x)x))))
+  (list (get-svec bvec Arows)
+        (get-A bmat Arows (make-matrix l l 0) sindex)
+        (get-B bmat Arows Brows/sclr (make-matrix l 1 0) sindex))
+    ))
+(define (disp/ax+b lst)
+  (list (first lst) (mat->list (second lst)) (mat->list (third lst))))
+;
+;(disp/ax+b (bmat/bvec->ax+b (matrix 4 4
+;                           1  2  3  4
+;                           5  6  7  8
+;                           9 10 11 12
+;                          13 14 15 16) '("q" -7 "p" 0)))
+;;1VRC(v=-7 r=2 c=3)
+;(mat->list (matrix-inverse (matrix 5 5
+;                                   1 0 0 -1 0
+;                                   0 0 0 0  2
+;                                   0 0 1 1  0
+;                                   0 3 0 1  0
+;                                   0 0 0 1 -1)))
+;(mat->list (matrix-inverse (matrix 4 4
+;                                   0 0 0  2
+;                                   0 1 1  0
+;                                   3 0 1  0
+;                                   0 0 1 -1)))
+;(disp/ax+b (bmat/bvec->ax+b (matrix-inverse (matrix 5 5
+;                                                  1 0 0 -1 0
+;                                                  0 0 0 0  2
+;                                                  0 0 1 1  0
+;                                                  0 3 0 1  0
+;                                                  0 0 0 1 -1))
+;                                           '(0 "q" -7  0 0)
+;                                           ))
+;(disp/ax+b (bmat/bvec->ax+b (matrix-inverse (matrix 4 4 
+;                                                   0 0 0  2
+;                                                   0 1 1  0
+;                                                   3 0 1  0
+;                                                   0 0 1 -1))
+;                                           '("q" -7  0 0)
+;                                           ))
+
+(define-metafunction bond
+  jct->ax+b : junct -> any
+  ((jct->ax+b junct_start)
+   ,(let ((bmat/bvec (term (solve-bond junct_start))))
+      (bmat/bvec->ax+b (matrix-inverse (first bmat/bvec)) (vector->list (second bmat/bvec)))))
+  )
+;(disp/ax+b (term (jct->ax+b (1 (v -7) (c 3) (r 2)))))
+;(disp/ax+b (term (jct->ax+b (1 (v -7) (l 3) (c 2) (r 5)))));same as book

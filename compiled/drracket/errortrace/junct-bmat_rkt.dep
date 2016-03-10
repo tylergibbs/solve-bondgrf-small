@@ -1,0 +1,1 @@
+("6.3" ("c4c7610627caa3256964de5825bf1485e217f3ea" . "c1ae6c6b7813c8ec33b05e852f4c3e3bf8c2565a") #"/Users/tylergibbs/Library/Racket/planet/300/6.3/cache/wmfarr/plt-linalg.plt/1/13/matrix.rkt" (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt") (collects #"redex" #"main.rkt") (collects #"redex" #"reduction-semantics.rkt"))
